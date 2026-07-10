@@ -1,0 +1,38 @@
+# docker/docker-compose.yml
+version: '3.8'
+
+services:
+  ansible:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        USERNAME: ${ANSIBLE_USER:-ansible}
+        USER_UID: ${USER_UID:-1000}
+        USER_GID: ${USER_GID:-1000}
+        WORKDIR: ${ANSIBLE_WORKDIR:-/workspace}
+        KEYS_MOUNT_PATH: ${KEYS_MOUNT_PATH:-/keys}
+    container_name: ansible
+    image: ansible-vps-bootstrap:latest
+    environment:
+      GIT_REPO: ${ANSIBLE_GIT_REPO}
+      GIT_TOKEN: ${ANSIBLE_GIT_TOKEN}
+      GIT_BRANCH: ${ANSIBLE_GIT_BRANCH:-main}
+    volumes:
+      - ${ANSIBLE_LOCAL_SRC:-ansible_workspace}:${ANSIBLE_WORKDIR:-/workspace}
+      - shared_keys:${KEYS_MOUNT_PATH:-/keys}
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "ansible", "--version"]
+      interval: 60s
+      timeout: 5s
+      retries: 2
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  ansible_workspace:
+    name: ansible_workspace
+  shared_keys:
+    name: shared_keys
