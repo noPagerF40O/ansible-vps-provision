@@ -37,9 +37,9 @@ RUN mkdir -p ${KEYS_MOUNT_PATH} && \
     chown -R ${USER_UID}:${USER_GID} ${KEYS_MOUNT_PATH} && \
     chmod 755 ${KEYS_MOUNT_PATH}
 
-COPY --chown=${USERNAME}:${USERNAME} --chmod=755 entrypoint.sh /entrypoint.sh
+COPY --chown=${USERNAME}:${USERNAME} --chmod=755 entrypoint.sh /usr/local/bin/entrypoint.sh
 
 USER ${USERNAME}
 WORKDIR ${WORKDIR}
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

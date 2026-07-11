@@ -13,7 +13,7 @@ services:
         WORKDIR: ${ANSIBLE_WORKDIR:-/workspace}
         KEYS_MOUNT_PATH: ${KEYS_MOUNT_PATH:-/keys}
     container_name: ansible
-    image: ansible-vps-bootstrap:latest
+    image: ansible-vps-provision:latest
     environment:
       GIT_REPO: ${ANSIBLE_GIT_REPO}
       GIT_TOKEN: ${ANSIBLE_GIT_TOKEN}
