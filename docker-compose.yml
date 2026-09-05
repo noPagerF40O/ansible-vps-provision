@@ -13,13 +13,12 @@ services:
         WORKDIR: ${ANSIBLE_WORKDIR:-/workspace}
         KEYS_MOUNT_PATH: ${KEYS_MOUNT_PATH:-/keys}
     container_name: ansible
-    image: ansible-vps-provision:latest
+    image: docker-ansible-vps-provision:latest
     environment:
-      GIT_REPO: ${ANSIBLE_GIT_REPO}
-      GIT_TOKEN: ${ANSIBLE_GIT_TOKEN}
+      GIT_REPO: ${ANSIBLE_GIT_REPO:-noPagerF40O/ansible-vps-playbooks}
       GIT_BRANCH: ${ANSIBLE_GIT_BRANCH:-main}
     volumes:
-      - ${ANSIBLE_LOCAL_SRC:-ansible_workspace}:${ANSIBLE_WORKDIR:-/workspace}
+      - ${ANSIBLE_PLAYBOOK_SRC:-ansible_workspace}:${ANSIBLE_WORKDIR:-/workspace}
       - shared_keys:${KEYS_MOUNT_PATH:-/keys}
     env_file:
       - .env

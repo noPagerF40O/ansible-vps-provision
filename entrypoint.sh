@@ -4,13 +4,15 @@ set -euo pipefail
 log() { echo "[$(date +'%H:%M:%S')] $1"; }
 die() { log "ERROR: $1"; exit "${2:-1}"; }
 
+# Единое место для каталога ролей
+ROLES_DIR="/workspace/roles"
+
 # ============================================================
 # Функция установки Ansible-ролей
 # ============================================================
 install_roles() {
-    local roles_dir="${1:-/workspace/playbooks/roles}"
-    log "Installing Ansible roles into $roles_dir..."
-    mkdir -p "$roles_dir"
+    log "Installing Ansible roles into $ROLES_DIR..."
+    mkdir -p "$ROLES_DIR"
 
     local req_file=""
     if [ -f /workspace/requirements.yml ]; then
@@ -23,10 +25,9 @@ install_roles() {
 
     if [ -n "$req_file" ]; then
         log "Found requirements file: $req_file"
-        ansible-galaxy role install -r "$req_file" --force -p "$roles_dir" --ignore-errors || {
+        ansible-galaxy role install -r "$req_file" --force -p "$ROLES_DIR" --ignore-errors || {
             log "WARNING: Some roles failed to install. Check the output above."
         }
-        log "Roles installation completed."
     else
         log "requirements.yml not found. Skipping role installation."
     fi
@@ -34,14 +35,14 @@ install_roles() {
 }
 
 # ============================================================
-# Определение режима по наличию ANSIBLE_LOCAL_SRC
+# Определение режима разработчика по наличию ANSIBLE_PLAYBOOK_SRC
 # ============================================================
 DEV_MODE=false
-if [ -n "${ANSIBLE_LOCAL_SRC:-}" ]; then
+if [ -n "${ANSIBLE_PLAYBOOK_SRC:-}" ]; then
     DEV_MODE=true
-    log "Development mode detected (ANSIBLE_LOCAL_SRC is set)."
+    log "Development mode detected (ANSIBLE_PLAYBOOK_SRC is set)."
 else
-    log "Production mode (ANSIBLE_LOCAL_SRC is not set)."
+    log "Production mode (ANSIBLE_PLAYBOOK_SRC is not set)."
 fi
 
 # ============================================================
@@ -53,12 +54,11 @@ git config --global --add safe.directory /workspace 2>/dev/null || true
 # Режим разработки
 # ============================================================
 if [ "$DEV_MODE" = true ]; then
-    log "Using mounted code from ${ANSIBLE_LOCAL_SRC}"
+    log "Using mounted code from ${ANSIBLE_PLAYBOOK_SRC}"
     if [ -z "$(ls -A .)" ]; then
         log "WARNING: Working directory is empty. Did you mount your code?"
     fi
-    # Устанавливаем роли из локального кода
-    install_roles "/workspace/playbooks/roles"
+    install_roles
     
     if [ $# -gt 0 ]; then
         log "Executing: $*"
@@ -71,20 +71,15 @@ if [ "$DEV_MODE" = true ]; then
 fi
 
 # ============================================================
-# Продакшн-режим: проверка Git и клонирование
+# Продакшн-режим: проверка Git и клонирование (публичный репозиторий)
 # ============================================================
 GIT_REPO="${GIT_REPO:?GIT_REPO is required. Check ANSIBLE_GIT_REPO in .env}"
-GIT_TOKEN="${GIT_TOKEN:?GIT_TOKEN is required. Check ANSIBLE_GIT_TOKEN in .env}"
 GIT_BRANCH="${GIT_BRANCH:-main}"
 
 command -v git &>/dev/null || die "git is not installed"
 log "Working directory: $PWD"
 
-# Настраиваем git для использования токена через credential helper
-git config --global credential.helper "store --file=/tmp/git-credentials"
-echo "https://${GIT_TOKEN}:@github.com" > /tmp/git-credentials
-chmod 600 /tmp/git-credentials
-
+# Формируем URL для клонирования (без токена)
 if [[ "$GIT_REPO" =~ ^https?:// ]]; then
     CLONE_URL="$GIT_REPO"
 else
@@ -107,7 +102,7 @@ if [ -d .git ]; then
     fi
 else
     log "Cloning $GIT_REPO (branch: $GIT_BRANCH)..."
-    git clone --branch "$GIT_BRANCH" "$CLONE_URL" . || die "Clone failed. Check GIT_REPO, GIT_TOKEN, and GIT_BRANCH"
+    git clone --branch "$GIT_BRANCH" "$CLONE_URL" . || die "Clone failed. Check GIT_REPO and GIT_BRANCH"
 fi
 
 log "Repository ready"
@@ -116,7 +111,7 @@ log "Branch: $(git branch --show-current)"
 # ============================================================
 # Установка ролей после клонирования
 # ============================================================
-install_roles "/workspace/playbooks/roles"
+install_roles
 
 # ============================================================
 # Запуск команды или ожидание
